@@ -1,8 +1,8 @@
 <h1 align="center">🦎 ReptileWM</h1>
-  
+
 ReptileWM is a 🪶 **lightweight** and ⚙️ **extensible** tiling window manager built with 🐍 Python. Designed with 🧠 **simplicity** and ⚡ **efficiency** in mind, it offers a seamless 🖥️ workspace management experience for developers and power users.  
 
----
+
 
 ## 🌟 Features  
 - 🧩 **Dynamic Tiling**: Automatically organizes windows into non-overlapping tiles.  
@@ -12,7 +12,7 @@ ReptileWM is a 🪶 **lightweight** and ⚙️ **extensible** tiling window mana
 - 🐍 **Scriptable**: Fully configurable with Python scripts to match your workflow.  
 - 🖥️ **Multi-Monitor Support**: Effortlessly manage workspaces across multiple screens.  
 
----
+
 
 ## 🛠️ Installation  
 
@@ -43,7 +43,7 @@ Ensure you have the following installed:
 
 4. (Optional) Add ReptileWM to your display manager to make it your default window manager.  
 
----
+
 
 ## 🎨 Configuration  
 
@@ -53,7 +53,7 @@ ReptileWM uses a 🐍 **Python-based configuration file** (`config.py`) that let
 - 🎨 Appearance (colors, borders, etc.)  
 - 🪄 Rules for specific applications  
 
----
+
 
 ## 📚 Usage  
 
@@ -66,7 +66,7 @@ ReptileWM uses a 🐍 **Python-based configuration file** (`config.py`) that let
 
 📝 *Check the `config.py` file for a full list of keybindings and customization options.*  
 
----
+
 
 ## 🤝 Contributing  
 
@@ -88,22 +88,22 @@ Contributions are welcome! 🎉 Whether it’s a 🐛 bug fix, 💡 new feature,
    ```  
 5. **Open a pull request** 🔃.  
 
----
+
 
 ## 📜 License  
 
 This project is licensed under the 📝 **MIT License**. See the `LICENSE` file for details.  
 
----
+
 
 ## 🧑‍💻 Author  
 
 **ReptileWM** is developed and maintained by [Snigdha OS Team](https://github.com/Snigdha-OS) 🐍💻.  
 
----
+
 
 ## 📧 Support  
 
 If you encounter any issues or have questions, feel free to reach out via the [issues page](https://github.com/ReptileWM/ReptileWM/issues) 🛟.  
 
----
+
