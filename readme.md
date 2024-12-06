@@ -1,4 +1,5 @@
-<h1 align="center">🦎 ReptileWM</h1>  
+<h1 align="center">🦎 ReptileWM</h1>
+  
 ReptileWM is a 🪶 **lightweight** and ⚙️ **extensible** tiling window manager built with 🐍 Python. Designed with 🧠 **simplicity** and ⚡ **efficiency** in mind, it offers a seamless 🖥️ workspace management experience for developers and power users.  
 
 ---
