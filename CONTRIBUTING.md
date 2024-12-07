@@ -1,4 +1,4 @@
-# 🌟 Contribution Guidelines 🌟  
+# 🌟 Contribution Guidelines
 
 Hello, amazing contributor! 🎉 We’re thrilled to have you here. Contributions from awesome people like you make this project great. Here’s how you can join the fun:  
 
