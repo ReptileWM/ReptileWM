@@ -35,7 +35,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Pyre
-        uses: facebook/pyre-action@v1
+        uses: facebook/pyre-action@v0.0.2
         with:
           repo-directory: './'
           requirements-path: 'requirements.txt'
