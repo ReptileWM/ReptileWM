@@ -1,99 +1,99 @@
-import atexit  # Provides functionality to register functions that run automatically when the program exits.
-import enum  # Used for creating enumerations, which are a set of symbolic names bound to unique, constant values.
-import os  # Allows interaction with the operating system, such as executing other programs or terminating processes.
-import sys  # Provides access to system-specific parameters and functions, such as command-line arguments and the Python executable.
-import logging  # A built-in module for creating logs to track application behavior and debug issues.
-from typing import Optional  # Importing Optional to use for type annotations
+import signal  # Provides a way to handle OS-level signals (e.g., SIGINT, SIGTERM)
+import subprocess  # Used to manage and run subprocesses for restarting the program
+import structlog  # Modern library for structured logging
+from enum import IntEnum  # Extends the enum functionality with integer comparison
+from typing import Optional  # Used for type hints when a value can be None
 
-# Set up a logger for recording lifecycle-related actions
-logger = logging.getLogger("logger")
+# Set up a structured logger for better log clarity
+logger = structlog.get_logger()
 
-# Define the public API of this module, explicitly stating what should be accessible when imported
-__all__ = ["duration"]
-
-# Define an enumeration class to represent different behaviors of the program lifecycle
-Behavior = enum.Enum("Behavior", "NONE TERMINATE RESTART")
-
+class Behavior(IntEnum):
+    """
+    Enum to define possible behaviors for the program lifecycle.
+    - NONE: No special action on exit.
+    - TERMINATE: Exit the program with a specified exit code.
+    - RESTART: Restart the program with the same Python interpreter and arguments.
+    """
+    NONE = 0
+    TERMINATE = 1
+    RESTART = 2
 
 class Duration:
     """
-    This class manages the program's lifecycle, determining how it behaves when the program exits.
-
-    Key Responsibilities:
-    - Define actions on program exit, such as restarting or terminating the program.
-    - Allow configuration of exit behavior via attributes.
-    - Register an `onExit` function to execute lifecycle actions at exit.
+    Manages the lifecycle of the application:
+    - Configures what happens when the application exits.
+    - Supports behaviors like restart and termination.
+    - Registers signal handlers for cleanup and graceful shutdown.
     """
+    def __init__(self):
+        self.behavior = Behavior.NONE  # Default behavior: do nothing
+        self.exitcode: int = 0  # Exit code for termination
+        self.state_file: Optional[str] = None  # Optional state file for restarts
 
-    def __init__(self) -> None:
-        # Default behavior is to do nothing on exit
-        self.behavior = Behavior.NONE
+        # Register signal handlers for process exit events
+        signal.signal(signal.SIGINT, self.on_exit)  # Handle Ctrl+C (Interrupt)
+        signal.signal(signal.SIGTERM, self.on_exit)  # Handle termination signals
 
-        # Exit code for the program; used only if Behavior.TERMINATE is set
-        self.exitcode: int = 0
-
-        # Optional file path for storing the program's state during a restart
-        self.state_file: Optional[str] = None
-
-        # Register the `onExit` method to be called automatically when the program exits
-        # This ensures cleanup or restart logic is executed appropriately
-        atexit.register(self.onExit)
-
-    def onExit(self) -> None:
+    def on_exit(self, signal_received, frame):
         """
-        Called automatically at program exit. It decides the action to take based on `self.behavior`:
-        - RESTART: Reconstructs the command-line arguments and restarts the program.
-        - TERMINATE: Exits the program with a specified exit code.
-        - NONE: Performs no action, allowing the program to exit naturally.
+        Handles program exit events based on the current behavior:
+        - RESTART: Rebuilds the command-line arguments and restarts the program.
+        - TERMINATE: Ensures proper exit with the specified exit code.
+        - NONE: No special action, allows normal termination.
         """
-        if self.behavior is Behavior.RESTART:
-            # Handle restarting the program
-            self._restart_program()
-        elif self.behavior is Behavior.TERMINATE:
-            # Handle terminating the program
-            self._terminate_program()
+        logger.info(
+            "Exiting program",
+            signal=signal_received,
+            behavior=self.behavior.name,
+            exit_code=self.exitcode,
+        )
 
-    def _restart_program(self) -> None:
+        if self.behavior == Behavior.RESTART:
+            self.restart_program()
+        elif self.behavior == Behavior.TERMINATE:
+            self.terminate_program()
+
+    def restart_program(self):
         """
-        Restart the program by reconstructing the command-line arguments and using `os.execv`.
-        - This method ensures the program restarts with the same Python interpreter and arguments.
+        Restart the program by rebuilding the command-line arguments and spawning a new process.
         """
-        # Construct the command to relaunch the program
-        argv = [sys.executable] + sys.argv  # `sys.executable` gives the path to the Python interpreter
+        # Construct command-line arguments for the new process
+        args = [sys.executable] + sys.argv  # Use the same Python interpreter and args
+        if "--no-spawn" not in args:  # Avoid spawning loops
+            args.append("--no-spawn")
 
-        # Avoid multiple restarts by adding a no-spawn flag if not already present
-        if "--no-spawn" not in argv:
-            argv.append("--no-spawn")
-
-        # Remove any arguments that specify the current state, as the new process will generate its own
-        argv = [s for s in argv if not s.startswith("--with-state")]
-
-        # If a state file is specified, include it in the arguments for the restarted process
+        # Add the state file to the arguments if specified
         if self.state_file:
-            argv.append("--with-state=" + self.state_file)
+            args.append(f"--with-state={self.state_file}")
 
-        # Log the restart action for debugging and traceability
-        logger.warning("Restarting program with arguments: %s", argv)
+        logger.info("Restarting program", args=args)
 
-        # Restart the program; this replaces the current process with a new one
-        # No code after this line will execute in the current process
         try:
-            os.execv(sys.executable, argv)
+            # Restart the program using subprocess
+            subprocess.run(args)
         except Exception as e:
-            logger.error("Failed to restart the program: %s", e)
+            logger.error("Failed to restart the program", error=str(e))
 
-    def _terminate_program(self) -> None:
+    def terminate_program(self):
         """
         Terminate the program with the specified exit code.
-        - This bypasses Python's cleanup mechanisms for speed and simplicity.
         """
-        # Log the termination action
-        logger.warning("Terminating program with exit code: %d", self.exitcode)
+        logger.warning("Terminating program", exit_code=self.exitcode)
+        exit(self.exitcode if self.exitcode else 0)
 
-        # Exit the program immediately, skipping any additional cleanup code
-        os._exit(self.exitcode if self.exitcode else 0)
-
-
-# Create a single instance of the `Duration` class.
-# This shared instance can be used across the application to manage its lifecycle.
+# Global instance to manage program lifecycle
 duration = Duration()
+
+# Example Usage:
+if __name__ == "__main__":
+    # Simulate setting a behavior (e.g., Restart or Terminate)
+    duration.behavior = Behavior.RESTART  # Change this to Behavior.TERMINATE to test termination
+    duration.state_file = "example_state.json"  # Example of a state file (optional)
+    logger.info("Program is running... Press Ctrl+C to exit.")
+    
+    # Simulate a long-running process
+    try:
+        while True:
+            pass  # Replace with your application logic
+    except KeyboardInterrupt:
+        logger.info("Interrupt received. Exiting gracefully.")
