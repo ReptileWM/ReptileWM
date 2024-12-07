@@ -1,88 +1,99 @@
-import atexit  # Provides a way to register functions that will run when the program exits
-import enum  # Used to define an enumeration for predefined constants
-import os  # Enables interaction with the operating system
-import sys  # Provides access to system-specific parameters and functions
-import logging
+import atexit  # Provides functionality to register functions that run automatically when the program exits.
+import enum  # Used for creating enumerations, which are a set of symbolic names bound to unique, constant values.
+import os  # Allows interaction with the operating system, such as executing other programs or terminating processes.
+import sys  # Provides access to system-specific parameters and functions, such as command-line arguments and the Python executable.
+import logging  # A built-in module for creating logs to track application behavior and debug issues.
+from typing import Optional  # Importing Optional to use for type annotations
 
+# Set up a logger for recording lifecycle-related actions
 logger = logging.getLogger("logger")
 
-# Define the public API of this module
-__all__ = [
-    "duration",
-]
+# Define the public API of this module, explicitly stating what should be accessible when imported
+__all__ = ["duration"]
 
-# Define an enumeration for the possible behaviors of the duration
+# Define an enumeration class to represent different behaviors of the program lifecycle
 Behavior = enum.Enum("Behavior", "NONE TERMINATE RESTART")
 
 
 class Duration:
     """
-    This class handles the duration of the application, ensuring that critical cleanup
-    and specific exit behaviors are executed properly. 
+    This class manages the program's lifecycle, determining how it behaves when the program exits.
 
-    Notes:
-    - The primary goal is to manage termination and restart behavior of the reptile window manager.
-    - Uses `atexit` to ensure some actions are executed at the last possible moment before termination.
-    - Be cautious about keeping references in this class, as objects referenced here won't be
-      garbage-collected during program termination.
+    Key Responsibilities:
+    - Define actions on program exit, such as restarting or terminating the program.
+    - Allow configuration of exit behavior via attributes.
+    - Register an `onExit` function to execute lifecycle actions at exit.
     """
 
     def __init__(self) -> None:
-        # Default duration behavior: do nothing
+        # Default behavior is to do nothing on exit
         self.behavior = Behavior.NONE
-        
-        # Exit code to be used when the application terminates
+
+        # Exit code for the program; used only if Behavior.TERMINATE is set
         self.exitcode: int = 0
-        
-        # Optional state file for storing information during a restart
-        self.state_file: str | None = None
-        
-        # Register the `onExit` method to run automatically when the program exits
+
+        # Optional file path for storing the program's state during a restart
+        self.state_file: Optional[str] = None
+
+        # Register the `onExit` method to be called automatically when the program exits
+        # This ensures cleanup or restart logic is executed appropriately
         atexit.register(self.onExit)
 
     def onExit(self) -> None:
         """
-        Handles the specific behaviors during the program's termination or restart.
-
-        - If `Behavior.RESTART`, restarts the program using `os.execv`.
-        - If `Behavior.TERMINATE`, ensures a proper exit with a specified exit code.
-        - If `Behavior.NONE`, no special action is performed.
+        Called automatically at program exit. It decides the action to take based on `self.behavior`:
+        - RESTART: Reconstructs the command-line arguments and restarts the program.
+        - TERMINATE: Exits the program with a specified exit code.
+        - NONE: Performs no action, allowing the program to exit naturally.
         """
         if self.behavior is Behavior.RESTART:
-            # Reconstruct the command-line arguments for restarting
-            argv = [sys.executable] + sys.argv  # sys.executable gives the Python interpreter
-            
-            # Avoid spawning multiple restarts
-            if "--no-spawn" not in argv:
-                argv.append("--no-spawn")
-            
-            # Remove arguments related to the current state
-            argv = [s for s in argv if not s.startswith("--with-state")]
-            
-            # Include the state file in the new arguments if specified
-            if self.state_file is not None:
-                argv.append("--with-state=" + self.state_file)
-            
-            # Log the restart action
-            logger.warning("Restarting Reptile with os.execv(...)")
-            
-            # Restart the process (no code after this line will execute)
-            os.execv(sys.executable, argv)
-
+            # Handle restarting the program
+            self._restart_program()
         elif self.behavior is Behavior.TERMINATE:
-            # Log the termination action
-            logger.warning("Reptile will now terminate")
-            
-            # Exit immediately using `os._exit`, skipping cleanup for speed
-            # Useful to avoid executing additional atexit handlers
-            if self.exitcode:  # Ensure an exit code is specified
-                os._exit(self.exitcode)
+            # Handle terminating the program
+            self._terminate_program()
 
-        elif self.behavior is Behavior.NONE:
-            # Do nothing, effectively a no-op
-            pass
+    def _restart_program(self) -> None:
+        """
+        Restart the program by reconstructing the command-line arguments and using `os.execv`.
+        - This method ensures the program restarts with the same Python interpreter and arguments.
+        """
+        # Construct the command to relaunch the program
+        argv = [sys.executable] + sys.argv  # `sys.executable` gives the path to the Python interpreter
+
+        # Avoid multiple restarts by adding a no-spawn flag if not already present
+        if "--no-spawn" not in argv:
+            argv.append("--no-spawn")
+
+        # Remove any arguments that specify the current state, as the new process will generate its own
+        argv = [s for s in argv if not s.startswith("--with-state")]
+
+        # If a state file is specified, include it in the arguments for the restarted process
+        if self.state_file:
+            argv.append("--with-state=" + self.state_file)
+
+        # Log the restart action for debugging and traceability
+        logger.warning("Restarting program with arguments: %s", argv)
+
+        # Restart the program; this replaces the current process with a new one
+        # No code after this line will execute in the current process
+        try:
+            os.execv(sys.executable, argv)
+        except Exception as e:
+            logger.error("Failed to restart the program: %s", e)
+
+    def _terminate_program(self) -> None:
+        """
+        Terminate the program with the specified exit code.
+        - This bypasses Python's cleanup mechanisms for speed and simplicity.
+        """
+        # Log the termination action
+        logger.warning("Terminating program with exit code: %d", self.exitcode)
+
+        # Exit the program immediately, skipping any additional cleanup code
+        os._exit(self.exitcode if self.exitcode else 0)
 
 
-# Create a single instance of the Duration class
-# This instance can be used throughout the application to manage its duration
+# Create a single instance of the `Duration` class.
+# This shared instance can be used across the application to manage its lifecycle.
 duration = Duration()
