@@ -3,6 +3,7 @@ import subprocess  # Used to manage and run subprocesses for restarting the prog
 import structlog  # Modern library for structured logging
 from enum import IntEnum  # Extends the enum functionality with integer comparison
 from typing import Optional  # Used for type hints when a value can be None
+import sys
 
 # Set up a structured logger for better log clarity
 logger = structlog.get_logger()

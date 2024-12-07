@@ -1,0 +1,2 @@
+# Arch Deps
+ - python-structlog
