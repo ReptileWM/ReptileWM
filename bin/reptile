@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+# Importing necessary modules
+import os  # os provides functions for interacting with the operating system
+import sys  # sys provides access to system-specific parameters and functions
+import logging  # Import logging for better traceability
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)  # Configure logging to display messages
+logger = logging.getLogger(__name__)  # Get the logger for the current module
+
+# Get the current directory (where this script is located)
+this_dir = os.path.dirname(__file__)
+
+# Get the absolute path of the parent directory of the current script
+base_dir = os.path.abspath(os.path.join(this_dir, ".."))
+
+# Log the directory paths for debugging purposes
+logger.debug(f"Current script directory: {this_dir}")
+logger.debug(f"Base directory: {base_dir}")
+
+# Adding the parent directory to the system path (so Python can find modules in it)
+sys.path.insert(0, base_dir)
+
+# Importing modules from custom directories
+try:
+    import lib.core.duration  # Import the custom duration module
+except ImportError as e:
+    logger.error(f"Error importing lib.core.duration: {e}")
+    sys.exit(1)  # Exit if the import fails
+
+try:
+    from lib.scripts.main import main  # Import the 'main' function
+except ImportError as e:
+    logger.error(f"Error importing lib.scripts.main: {e}")
+    sys.exit(1)  # Exit if the import fails
+
+# Main script execution block
+if __name__ == "__main__":
+    try:
+        logger.info("Starting the main application...")
+        main()  # Run the main function
+    except Exception as e:
+        logger.error(f"Error running the main function: {e}")
+        sys.exit(1)  # Exit if an error occurs while running main()
